@@ -1,0 +1,113 @@
+@import 'tailwindcss';
+
+/* Palette sampled from the Ecoife reference; layout reference is Hiraola. */
+@theme {
+  --font-sans: 'Lato', sans-serif;
+  --color-primary: #348f7a;
+  --color-accent: #efc94c;
+  --color-heading: #303035;
+  --color-body: #78787b;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f5f4;
+  --color-border: #ececeb;
+}
+
+@layer base {
+  body { @apply font-sans text-heading; }
+  button, summary, select { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+  nav :focus-visible { outline-color: var(--color-accent); }
+  summary::-webkit-details-marker { display: none; }
+  a, button, summary, input, select, textarea {
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+  button:disabled { cursor: default; }
+}
+
+@utility header-container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: 15px;
+  @media (min-width: 576px) { max-width: 540px; }
+  @media (min-width: 768px) { max-width: 720px; }
+  @media (min-width: 1024px) { max-width: 960px; }
+  @media (min-width: 1200px) { max-width: 1140px; padding-inline: 7.5px; }
+}
+
+@media (max-width: 1023px) {
+  #primary-navigation .header-dropdown > div { position: static; box-shadow: none; }
+  .navigation-panel {
+    max-height: 0;
+    opacity: 0;
+    overflow: clip;
+    visibility: hidden;
+    transition: max-height 280ms ease, opacity 180ms ease, visibility 0s 280ms;
+  }
+  .navigation-panel[data-open='true'] {
+    max-height: 1400px;
+    opacity: 1;
+    visibility: visible;
+    transition: max-height 320ms ease, opacity 200ms ease, visibility 0s;
+  }
+}
+
+@utility showcase-container {
+  width: calc(100% - 30px);
+  margin-inline: auto;
+  @media (min-width: 1024px) { width: 94%; }
+}
+
+.product-track { scrollbar-width: none; }
+.product-track::-webkit-scrollbar { display: none; }
+
+@keyframes page-enter {
+  from { opacity: 0.88; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes content-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes menu-enter {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dialog-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes backdrop-enter { from { opacity: 0; } to { opacity: 1; } }
+@keyframes progress-move { from { transform: translateX(-100%); } to { transform: translateX(330%); } }
+
+.hero-slide-image { opacity: 0; transition: opacity 550ms ease-in-out; }
+.hero-slide-image[data-active='true'] { opacity: 1; }
+.navigation-progress { position: fixed; inset: 0 0 auto; height: 3px; overflow: hidden; z-index: 100; pointer-events: none; }
+.navigation-progress > span { display: block; height: 100%; width: 30%; background: var(--color-accent); animation: progress-move 1.3s ease-in-out 150ms infinite both; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-transition { animation: page-enter 280ms ease-out; }
+  .hero-slide-copy { animation: content-enter 350ms ease-out; }
+  .header-dropdown[open] > div { animation: menu-enter 180ms ease-out; }
+  dialog[open] { animation: dialog-enter 200ms ease-out; }
+  dialog[open]::backdrop { animation: backdrop-enter 200ms ease-out; }
+  [data-motion] { transition: opacity 450ms ease var(--reveal-delay, 0ms), translate 450ms cubic-bezier(.2,.7,.3,1) var(--reveal-delay, 0ms); }
+  [data-motion='pending'] { opacity: 0; translate: 0 14px; }
+  [data-motion='visible'], [data-motion='pending']:focus-within { opacity: 1; translate: 0 0; }
+  @media (hover: hover) and (pointer: fine) {
+    .page-transition article.group { transition: opacity 450ms ease var(--reveal-delay, 0ms), translate 450ms cubic-bezier(.2,.7,.3,1) var(--reveal-delay, 0ms), box-shadow 220ms ease, transform 220ms ease, border-color 220ms ease; }
+    .page-transition article.group:hover { transform: translateY(-3px); border-color: #348f7a66; box-shadow: 0 9px 24px #174b4010; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0s !important; transition-delay: 0s !important; animation: none !important; }
+  [data-motion] { opacity: 1 !important; translate: none !important; }
+  .navigation-progress > span { width: 100%; }
+}
+
+@media print {
+  [data-motion] { opacity: 1 !important; translate: none !important; }
+  .navigation-progress { display: none; }
+}

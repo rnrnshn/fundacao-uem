@@ -1,0 +1,118 @@
+import { test, expect } from '@playwright/test'
+
+test('homepage remains accessible and header reaches real pages', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Talento local')
+  await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Produtos', exact: true }).click()
+  await expect(page).toHaveURL(/\/produtos/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Produtos locais')
+  await page.getByLabel('Pesquisar projectos, produtos ou serviços').fill('café')
+  await page.getByRole('search').getByRole('button', { name: 'Pesquisar', exact: true }).click()
+  await expect(page).toHaveURL(/\/projectos/)
+  await expect(page.getByRole('region', { name: 'Resultados do directório' }).locator('article')).toHaveCount(1)
+  await expect(page.getByRole('region', { name: 'Resultados do directório' })).toContainText('Sabores da Zambézia')
+  expect(errors).toEqual([])
+})
+
+test('directory filters, sorting, pagination and history are URL-backed', async ({ page }) => {
+  await page.goto('/projectos')
+  const results = page.getByRole('region', { name: 'Resultados do directório' })
+  await expect(results.locator('article')).toHaveCount(6)
+  await page.getByRole('button', { name: 'Seguinte', exact: true }).click()
+  await expect(results.locator('article')).toHaveCount(2)
+  await expect(page).toHaveURL(/pagina=2/)
+  await page.reload()
+  await expect(results).toContainText('Página 2 de 2')
+  await page.getByLabel('Província', { exact: true }).selectOption('Nampula')
+  await expect(results.locator('article')).toHaveCount(1)
+  await expect(results).toContainText('Frutos da Terra')
+  await page.getByLabel('Mulheres', { exact: true }).click()
+  await expect(page.getByLabel('Mulheres', { exact: true })).toBeChecked()
+  await expect(results).toContainText('Nenhum projecto ou oferta')
+  await page.getByRole('button', { name: 'Limpar filtros', exact: true }).first().click()
+  await expect(results.locator('article')).toHaveCount(6)
+  await page.getByLabel('Ordenar').selectOption('nome-desc')
+  await expect(results.locator('article').first()).toContainText('Sabores da Zambézia')
+  await page.getByRole('button', { name: 'Vista em lista' }).click()
+  await expect(page).toHaveURL(/vista=lista/)
+  await page.goBack()
+  await expect(page.getByRole('button', { name: 'Vista em grelha' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('all provinces exist; unknown records return real 404s', async ({ page, request }) => {
+  for (const slug of ['cabo-delgado', 'gaza', 'inhambane', 'manica', 'maputo-provincia', 'cidade-de-maputo', 'nampula', 'niassa', 'sofala', 'tete', 'zambezia']) {
+    const response = await request.get(`/provincias/${slug}`)
+    expect(response.status()).toBe(200)
+    expect(await response.text()).toContain('Catálogo de demonstração')
+  }
+  await page.goto('/provincias/niassa')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Niassa')
+  await expect(page.getByText('Nenhum projecto ou oferta nesta selecção')).toBeVisible()
+  await expect(page.getByLabel('Província', { exact: true })).toBeDisabled()
+  for (const url of ['/provincias/inexistente', '/projectos/inexistente', '/produtos/inexistente', '/servicos/inexistente', '/produtos/comunicacao-digital']) {
+    expect((await request.get(url)).status()).toBe(404)
+  }
+  await page.goto('/projectos?pagina=-2&publico=invalid&categoria=invalid&ordem=invalid')
+  await expect(page.getByRole('region', { name: 'Resultados do directório' }).locator('article')).toHaveCount(6)
+})
+
+test('project gallery, product detail and enquiry context', async ({ page }) => {
+  await page.goto('/projectos/horta-comunitaria')
+  await page.getByRole('button', { name: 'Ver fotografia 2', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Ver fotografia 2', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('link', { name: /Tomate fresco/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tomate fresco')
+  await page.getByRole('link', { name: 'Informações sobre o produto', exact: true }).click()
+  await expect(page).toHaveURL(/\/contacto/)
+  await expect(page.getByLabel('Assunto *')).toHaveValue('Tomate fresco')
+  await expect(page.getByText('Projecto seleccionado: Horta Comunitária (demonstração)')).toBeVisible()
+  await page.getByLabel('Nome *', { exact: true }).fill('Pessoa de Teste')
+  await page.getByLabel('Email *', { exact: true }).fill('test@example.com')
+  await page.getByLabel('Mensagem *', { exact: true }).fill('Gostaria de obter mais informações sobre este exemplo.')
+  await page.getByRole('button', { name: 'Preparar mensagem', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('não enviada')
+  const download = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Descarregar mensagem' }).click()
+  expect((await download).suggestedFilename()).toBe('mensagem-fundacao-universitaria.txt')
+  await page.getByLabel('Mensagem *', { exact: true }).fill('Uma alteração ao conteúdo da mensagem anterior.')
+  await expect(page.getByRole('button', { name: 'Descarregar mensagem' })).toHaveCount(0)
+})
+
+test('inner pages SSR, mobile navigation and no overflow', async ({ page, request }) => {
+  const urls = ['/projectos', '/produtos', '/servicos', '/provincias', '/sobre', '/contacto', '/privacidade', '/projectos/horta-comunitaria', '/produtos/tomate-fresco', '/servicos/comunicacao-digital']
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  for (const url of urls) {
+    const response = await request.get(url)
+    const html = await response.text()
+    expect(response.status()).toBe(200)
+    expect(html).toContain('<html lang="pt-MZ"')
+    expect(html).toContain('<h1')
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(url)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.setViewportSize({ width: 320, height: 844 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.getByRole('button', { name: 'Abrir menu' }).click()
+  await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Sobre nós' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sobre nós')
+  await expect(page.getByRole('navigation', { name: 'Navegação principal' })).not.toBeVisible()
+  const footer = page.getByRole('contentinfo')
+  await footer.getByLabel('Província no rodapé').selectOption('Niassa')
+  await footer.getByRole('button', { name: 'Explorar a província seleccionada' }).click()
+  await expect(page).toHaveURL(/\/provincias\/niassa/)
+  expect(errors).toEqual([])
+})
+
+test('gallery resets when a related project has fewer photos', async ({ page }) => {
+  await page.goto('/projectos/horta-comunitaria')
+  await page.getByRole('button', { name: 'Ver fotografia 3', exact: true }).click()
+  await page.getByRole('link', { name: /Cultivar Juntos/ }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cultivar Juntos')
+  await expect(page.getByRole('button', { name: 'Ver fotografia 1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('img', { name: 'Cultivar Juntos — fotografia ilustrativa', exact: true })).toHaveAttribute('src', /images\.unsplash\.com/)
+})

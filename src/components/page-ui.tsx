@@ -1,0 +1,10 @@
+import { Link } from '@tanstack/react-router'
+import { photo } from '../lib/catalog'
+export const buttonClass = 'inline-flex min-h-11 items-center justify-center bg-primary px-6 py-3 text-xs font-bold uppercase text-white transition-colors hover:bg-primary/90 disabled:opacity-50'
+export const fieldClass = 'min-h-11 w-full border border-border bg-white px-3 py-2.5 text-sm text-heading'
+
+export function PageBanner({ title, parent }: { title: string; parent?: string }) {
+  return <div className="relative isolate flex min-h-[225px] items-center justify-center overflow-hidden bg-primary px-5 py-12 text-center text-white"><img src={photo('photo-1500382017468-9049fed747ef', 1600)} alt="" className="absolute inset-0 -z-20 size-full object-cover object-center"/><div className="absolute inset-0 -z-10 bg-[#174b40]/75"/><div><h1 className="text-[28px] leading-tight font-bold uppercase sm:text-[36px]">{title}</h1><nav aria-label="Localização na página" className="mt-4 flex flex-wrap justify-center gap-2 text-sm"><Link to="/" className="hover:text-accent">Início</Link><span aria-hidden="true">›</span>{parent && <><Link to={parent === 'Províncias' ? '/provincias' : '/projectos'} className="hover:text-accent">{parent}</Link><span aria-hidden="true">›</span></>}<span aria-current="page">{title}</span></nav></div><span className="absolute right-2 bottom-1 text-[9px] text-white/80">Fotografia ilustrativa · Unsplash</span></div>
+}
+export function DemoNotice() { return <p className="border-l-2 border-accent bg-surface-muted px-4 py-3 text-xs leading-6 text-body"><strong className="text-heading">Catálogo de demonstração.</strong> Nomes, localizações e fotografias são exemplos para pré-visualização. Não representam projectos aprovados nem ofertas disponíveis.</p> }
+export function SectionHeading({ children }: { children: React.ReactNode }) { return <h2 className="relative mb-6 border-b border-border pb-4 text-[22px] font-bold uppercase after:absolute after:bottom-[-1px] after:left-0 after:h-px after:w-24 after:bg-primary">{children}</h2> }
